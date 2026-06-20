@@ -1,0 +1,3 @@
+../Core/Src/security_vault.c:14:6:Vault_Is_Initialized	16	static
+../Core/Src/security_vault.c:26:19:Vault_Write_Credential	112	static
+../Core/Src/security_vault.c:106:6:Vault_Read_Credential	24	static

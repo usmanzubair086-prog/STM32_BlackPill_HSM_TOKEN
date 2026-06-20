@@ -1,0 +1,2 @@
+../Core/Src/entropy_gen.c:16:6:Entropy_Seed_Engine	24	static
+../Core/Src/entropy_gen.c:55:6:Entropy_Generate_Password	32	static
