@@ -5,37 +5,40 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../Core/Src/aes.c \
 ../Core/Src/entropy_gen.c \
 ../Core/Src/main.c \
+../Core/Src/pass_storage.c \
 ../Core/Src/security_vault.c \
 ../Core/Src/stm32f4xx_hal_msp.c \
 ../Core/Src/stm32f4xx_it.c \
 ../Core/Src/syscalls.c \
 ../Core/Src/sysmem.c \
-../Core/Src/system_stm32f4xx.c \
-../Core/Src/test_runner.c 
+../Core/Src/system_stm32f4xx.c 
 
 OBJS += \
+./Core/Src/aes.o \
 ./Core/Src/entropy_gen.o \
 ./Core/Src/main.o \
+./Core/Src/pass_storage.o \
 ./Core/Src/security_vault.o \
 ./Core/Src/stm32f4xx_hal_msp.o \
 ./Core/Src/stm32f4xx_it.o \
 ./Core/Src/syscalls.o \
 ./Core/Src/sysmem.o \
-./Core/Src/system_stm32f4xx.o \
-./Core/Src/test_runner.o 
+./Core/Src/system_stm32f4xx.o 
 
 C_DEPS += \
+./Core/Src/aes.d \
 ./Core/Src/entropy_gen.d \
 ./Core/Src/main.d \
+./Core/Src/pass_storage.d \
 ./Core/Src/security_vault.d \
 ./Core/Src/stm32f4xx_hal_msp.d \
 ./Core/Src/stm32f4xx_it.d \
 ./Core/Src/syscalls.d \
 ./Core/Src/sysmem.d \
-./Core/Src/system_stm32f4xx.d \
-./Core/Src/test_runner.d 
+./Core/Src/system_stm32f4xx.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -45,7 +48,7 @@ Core/Src/%.o Core/Src/%.su Core/Src/%.cyclo: ../Core/Src/%.c Core/Src/subdir.mk
 clean: clean-Core-2f-Src
 
 clean-Core-2f-Src:
-	-$(RM) ./Core/Src/entropy_gen.cyclo ./Core/Src/entropy_gen.d ./Core/Src/entropy_gen.o ./Core/Src/entropy_gen.su ./Core/Src/main.cyclo ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/security_vault.cyclo ./Core/Src/security_vault.d ./Core/Src/security_vault.o ./Core/Src/security_vault.su ./Core/Src/stm32f4xx_hal_msp.cyclo ./Core/Src/stm32f4xx_hal_msp.d ./Core/Src/stm32f4xx_hal_msp.o ./Core/Src/stm32f4xx_hal_msp.su ./Core/Src/stm32f4xx_it.cyclo ./Core/Src/stm32f4xx_it.d ./Core/Src/stm32f4xx_it.o ./Core/Src/stm32f4xx_it.su ./Core/Src/syscalls.cyclo ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.cyclo ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32f4xx.cyclo ./Core/Src/system_stm32f4xx.d ./Core/Src/system_stm32f4xx.o ./Core/Src/system_stm32f4xx.su ./Core/Src/test_runner.cyclo ./Core/Src/test_runner.d ./Core/Src/test_runner.o ./Core/Src/test_runner.su
+	-$(RM) ./Core/Src/aes.cyclo ./Core/Src/aes.d ./Core/Src/aes.o ./Core/Src/aes.su ./Core/Src/entropy_gen.cyclo ./Core/Src/entropy_gen.d ./Core/Src/entropy_gen.o ./Core/Src/entropy_gen.su ./Core/Src/main.cyclo ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/pass_storage.cyclo ./Core/Src/pass_storage.d ./Core/Src/pass_storage.o ./Core/Src/pass_storage.su ./Core/Src/security_vault.cyclo ./Core/Src/security_vault.d ./Core/Src/security_vault.o ./Core/Src/security_vault.su ./Core/Src/stm32f4xx_hal_msp.cyclo ./Core/Src/stm32f4xx_hal_msp.d ./Core/Src/stm32f4xx_hal_msp.o ./Core/Src/stm32f4xx_hal_msp.su ./Core/Src/stm32f4xx_it.cyclo ./Core/Src/stm32f4xx_it.d ./Core/Src/stm32f4xx_it.o ./Core/Src/stm32f4xx_it.su ./Core/Src/syscalls.cyclo ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.cyclo ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32f4xx.cyclo ./Core/Src/system_stm32f4xx.d ./Core/Src/system_stm32f4xx.o ./Core/Src/system_stm32f4xx.su
 
 .PHONY: clean-Core-2f-Src
 

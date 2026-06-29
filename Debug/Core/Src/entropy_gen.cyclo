@@ -1,2 +1,3 @@
-../Core/Src/entropy_gen.c:16:6:Entropy_Seed_Engine	5
-../Core/Src/entropy_gen.c:55:6:Entropy_Generate_Password	4
+../Core/Src/entropy_gen.c:14:6:Entropy_Seed_Engine	1
+../Core/Src/entropy_gen.c:26:6:Entropy_Generate_Bytes	6
+../Core/Src/entropy_gen.c:63:6:Entropy_Generate_Password	7

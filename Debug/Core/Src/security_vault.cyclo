@@ -1,3 +1,2 @@
-../Core/Src/security_vault.c:14:6:Vault_Is_Initialized	1
-../Core/Src/security_vault.c:26:19:Vault_Write_Credential	7
-../Core/Src/security_vault.c:106:6:Vault_Read_Credential	6
+../Core/Src/security_vault.c:13:6:Vault_Encrypt_And_Store	3
+../Core/Src/security_vault.c:39:6:Vault_Retrieve_And_Decrypt	3

@@ -1,5 +1,5 @@
-Core/Src/test_runner.o: ../Core/Src/test_runner.c \
- ../Core/Inc/security_vault.h ../Core/Inc/main.h \
+Core/Src/pass_storage.o: ../Core/Src/pass_storage.c \
+ ../Core/Inc/pass_storage.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -30,10 +30,8 @@ Core/Src/test_runner.o: ../Core/Src/test_runner.c \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_usb.h \
- ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h \
- ../Core/Inc/entropy_gen.h
-../Core/Inc/security_vault.h:
-../Core/Inc/main.h:
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h
+../Core/Inc/pass_storage.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h:
@@ -65,4 +63,3 @@ Core/Src/test_runner.o: ../Core/Src/test_runner.c \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_usb.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h:
-../Core/Inc/entropy_gen.h:

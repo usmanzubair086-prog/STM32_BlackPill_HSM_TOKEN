@@ -1,0 +1,5 @@
+../Core/Src/pass_storage.c:14:6:PassStorage_Init	56	static
+../Core/Src/pass_storage.c:40:13:Flash_CommitDatabase	64	static,ignoring_inline_asm
+../Core/Src/pass_storage.c:99:6:PassStorage_ReadSlot	24	static
+../Core/Src/pass_storage.c:127:6:PassStorage_WriteSlot	24	static
+../Core/Src/pass_storage.c:153:6:PassStorage_ClearSlot	16	static

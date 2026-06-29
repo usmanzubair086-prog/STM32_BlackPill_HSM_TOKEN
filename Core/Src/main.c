@@ -29,8 +29,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "pass_storage.h"
 #include "security_vault.h"
 #include "entropy_gen.h"
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -102,113 +104,105 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_Delay(500);
   USBD_Start(&hUsbDeviceFS);
-
+  // Mount internal physical Flash cells into RAM mapping array structure
+  if (!PassStorage_Init())
+  {
+        // Catch System Error: Flash cell breakdown verification panic loop
+      while (1)
+        {
+            HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+            HAL_Delay(100);
+        }
+    }
   /* USER CODE END 2 */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
-  {
-    /* USER CODE END WHILE */
+    {
+      /* USER CODE END WHILE */
 
-	  // 1. Detect initial button press
-	        if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
-	        {
-	            // Debounce Delay (Wait for physical switch contacts to settle)
-	            HAL_Delay(50);
+      // 1. Detect physical edge trigger on User Button (PA0)
+      if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
+      {
+          // Debounce Delay (Wait for physical switch contacts to settle)
+          HAL_Delay(50);
 
-	            // Confirm it's still pressed (Not just electrical noise)
-	            if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
-	            {
-	            	// 2.  Turn ON LED on PC13(On-board LED) (Active-LOW) to indicate crypto processing
-	            	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+          // Confirm it's still pressed (Not just electrical line noise)
+          if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
+          {
+              // Turn ON onboard PC13 LED (Active-LOW) to confirm contact acknowledge
+              HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
-	            	// 3. Local Memory safe buffers
-	            	char generated_pass[17] = {0};
-	            	char retrieved_pass[17] = {0};
+              uint32_t press_start_time = HAL_GetTick();
+              bool is_long_press = false;
 
-	            	// 4. Seed with floating PA1(ADC1) to geenrate the string
-	            	Entropy_Seed_Engine(&hadc1);
-	            	Entropy_Generate_Password(generated_pass, 16);
+              // 2. Track timing while user maintains terminal pressure on the button
+              while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
+              {
+                  // Crossing 2-second limit enters Key Generation Registration loop
+                  if ((HAL_GetTick() - press_start_time) > 2000)
+                  {
+                      is_long_press = true;
+                      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13); // Rapid pulsing notification
+                      HAL_Delay(100);
+                  }
+              }
 
-	            	// 5. Write to Sector 5 Flash and Verify Integrity
-	            	if (Vault_Write_Credential(generated_pass) == HAL_OK)
-	            	{
-	            		if (Vault_Read_Credential(retrieved_pass, sizeof(retrieved_pass)))
-	            	    {
-	            			// Flash Success! Send over USB Keyboard Emulation
-	            	        USB_Type_String("Secure Payload: ");
-	            	        USB_Type_String(retrieved_pass);
-	            	        USB_Type_String("\n");
-	            	     }
-	            	 }
-	                // Fire the payload!
-	                // USB_Type_String("Secure$P@ssw0rd! ");
+              // Immediately clear LED indicator upon structural release
+              HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+              HAL_Delay(50); // Release edge filtering
 
-	            	/// void Run_Security_Sanity_Tests(void);
+              // -----------------------------------------------------------------
+              // ROUTE A: SHORT PRESS (< 2s) -> EXTRACT, AES DECRYPT & AUTO-TYPE
+              // -----------------------------------------------------------------
+              if (!is_long_press)
+              {
+                  char retrieved_pass[32] = {0};
 
-	                // 4. Wait for the user to physically let go of the button
-	                ///while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
-	                //{
-	                    ///HAL_Delay(10);
-	                ///}
+                  // Fetch data assets and execute matching dynamic block decryption sequence
+                  if (Vault_Retrieve_And_Decrypt(0, retrieved_pass))
+                  {
+                      USB_Type_String("Secure Payload: ");
+                      USB_Type_String(retrieved_pass);
+                      USB_Type_String("\n");
+                  }
+                  else
+                  {
+                      USB_Type_String("[ERROR: Slot 0 Empty or Corrupted]\n");
+                  }
+              }
 
-	                // 5. Debounce the release
-	                ///HAL_Delay(50);
-	            	// 5. Write to Sector 5 Flash and Verify Integrity
-	                if (Vault_Write_Credential(generated_pass) == HAL_OK)
-	                {
-	                	if (Vault_Read_Credential(retrieved_pass, sizeof(retrieved_pass)))
-	            	     {
-	                		// Flash Success! Send over USB Keyboard Emulation
-	            	        USB_Type_String("Secure Payload: ");
-	            	        USB_Type_String(retrieved_pass);
-	            	        USB_Type_String("\n");
-	            	     }
-	            	 }
+              // -----------------------------------------------------------------
+              // ROUTE B: LONG PRESS (> 2s) -> SAMPLE ENTROPY, AES ENCRYPT & WRITE
+              // -----------------------------------------------------------------
+              else
+              {
+                  char generated_pass[17] = {0};
 
-	                // 6. Turn OFF the PC13 LED (Active-Low) to indicate sequence completion
-	                HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+                  // Drive noise conversion cycles over internal floating pins
+                  Entropy_Seed_Engine(&hadc1);
+                  Entropy_Generate_Password(generated_pass, 16);
 
-	                // 7. Blocking Guard: Wait until the user physically releases PA0
-	            	while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
-	            	{
-	            		HAL_Delay(10);
-	            	}
-	            	HAL_Delay(50); // Debounce release edge
-		  // Create the USB HID report, we will take 8 bytes
-		  //uint8_t keyboard_report[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-
-		  // Set Byte 2 to the USB HID Keycode for 'a' (0x04)
-		  //keyboard_report[2] = 0x04;
-
-		  // Send the "Key Down"" report
-		  //USBD_HID_SendReport(&hUsbDeviceFS, keyboard_report, sizeof(keyboard_report));
-
-		  // A short delay to olet the PC process the keystroke
-		  //HAL_Delay(50);
-
-		  // CRITICAL: Clear the array and send a "Key Up" report
-		  // Stop the PC from the holding down permanently on the keystroke
-
-		  //keyboard_report[2] = 0x00;
-		  //USBD_HID_SendReport(&hUsbDeviceFS, keyboard_report, sizeof(keyboard_report));
-
-
-		  // Wait until the button is released and keep it from 'a' infinitelty while the button is held
-		  // New Revision for the keyboard lookup table of conversions
-		  //while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
-		  //{
-			  //HAL_Delay(10);
-		  //}
-    /* USER CODE BEGIN 3 */
-
-  /* USER CODE END 3 */
-	        }
-}
-
-}
-}
+                  // Package and hand the token string data directly down to the vault engine
+                  if (Vault_Encrypt_And_Store(0, "MasterSlot", generated_pass))
+                  {
+                      // Report success over USB Emulation once for physical storage backup
+                      USB_Type_String("[SUCCESS] New Dynamic Key Registered: ");
+                      USB_Type_String(generated_pass);
+                      USB_Type_String("\n");
+                  }
+                  else
+                  {
+                      USB_Type_String("[ERROR: Flash Flash Commit Aborted]\n");
+                  }
+              }
+          }
+      }
+      /* USER CODE BEGIN 3 */
+    }
+    /* USER CODE END 3 */
+  }
 
 /**
   * @brief System Clock Configuration

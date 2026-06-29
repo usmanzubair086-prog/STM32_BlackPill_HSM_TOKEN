@@ -1,138 +1,65 @@
-/*
- * security_vault.c
- *
- *  Created on: Jun 17, 2026
- *      Author: eccen
- */
-
 #include "security_vault.h"
+#include "pass_storage.h"
+#include "entropy_gen.h" // Assumes your hardware ADC noise functions are here
+#include "aes.h"        // Tiny-AES-c library
 #include <string.h>
 
-/**
- * @brief Checks Sector 5 to see if the magic signature exists.
- */
-bool Vault_Is_Initialized(void)
-{
-    // Direct pointer cast to volatile hardware address space
-    volatile const Vault_Storage_TypeDef *flash_vault = (volatile const Vault_Storage_TypeDef *)VAULT_FLASH_ADDRESS;
+// Master Key for AES-128. In production, this should be derived from a user pin code.
+static const uint8_t MASTER_KEY[16] = {
+    0x1A, 0x2B, 0x3C, 0x4D, 0x5E, 0x6F, 0x7A, 0x8B,
+    0x9C, 0x0D, 0x1E, 0x2F, 0x3A, 0x4B, 0x5C, 0x6D
+};
 
-    // Check if the flash memory matches our precise magic signature
-    return (flash_vault->magic_signature == VAULT_MAGIC_NUMBER);
+bool Vault_Encrypt_And_Store(uint8_t slot_id, const char* label, const char* plaintext_pass)
+{
+    struct AES_ctx ctx;
+    uint8_t random_iv[AES_IV_SIZE] = {0};
+    uint8_t crypto_buffer[AES_BLOCK_SIZE] = {0};
+
+    if (plaintext_pass == NULL || label == NULL) return false;
+
+    // 1. Prepare raw plaintext into our 32-byte chunk (leaving trailing spaces zero-padded)
+    strncpy((char*)crypto_buffer, plaintext_pass, AES_BLOCK_SIZE - 1);
+
+    // 2. Pull a completely unique, unpredictable 16-byte vector from your ADC chaos generator
+    // Even if the password is the same, this guarantees the ciphertext changes completely!
+    Entropy_Generate_Bytes(random_iv, AES_IV_SIZE);
+
+    // 3. Mount the Tiny-AES context configuration using your key and the fresh IV
+    AES_init_ctx_iv(&ctx, MASTER_KEY, random_iv);
+
+    // 4. Transform the data into pure scrambled ciphertext blocks in place
+    AES_CBC_encrypt_buffer(&ctx, crypto_buffer, AES_BLOCK_SIZE);
+
+    // 5. Hand the secure packages down to the warehouse module for silicon writing
+    // pass_storage should accept matching uint8_t pointers for the IV and Ciphertext
+    return PassStorage_WriteSlot(slot_id, label, random_iv, crypto_buffer);
 }
 
-/**
- * @brief Encrypts a plaintext string and commits it to Sector 5 Flash.
- */
-HAL_StatusTypeDef Vault_Write_Credential(const char* plaintext_str)
+bool Vault_Retrieve_And_Decrypt(uint8_t slot_id, char* out_plaintext)
 {
-    // Defensive Check: Ensure the input pointer is valid
-    if (plaintext_str == NULL)
+    struct AES_ctx ctx;
+    char retrieved_label[16] = {0};
+    uint8_t stored_iv[AES_IV_SIZE] = {0};
+    uint8_t cipher_buffer[AES_BLOCK_SIZE] = {0};
+
+    if (out_plaintext == NULL) return false;
+
+    // 1. Fetch raw data assets back from physical flash memory cache
+    if (!PassStorage_ReadSlot(slot_id, retrieved_label, stored_iv, cipher_buffer))
     {
-        return HAL_ERROR;
+        return false; // Storage read failure or slot uninitialized
     }
 
-    // Defensive Check: Bound check string length to fit our physical container safely
-    size_t str_len = strlen(plaintext_str);
-    if (str_len >= MAX_PASSWORD_LEN)
-    {
-        return HAL_ERROR; // String is too large for the allocated flash allocation
-    }
+    // 2. Build the exact matching execution context using the original IV saved with this slot
+    AES_init_ctx_iv(&ctx, MASTER_KEY, stored_iv);
 
-    // Stack Isolation: Clear the structure entirely to prevent stack memory leakage to Flash
-    Vault_Storage_TypeDef local_vault;
-    memset(&local_vault, 0, sizeof(Vault_Storage_TypeDef));
+    // 3. Run the inverse mathematical matrix to reverse the scrambling in place
+    AES_CBC_decrypt_buffer(&ctx, cipher_buffer, AES_BLOCK_SIZE);
 
-    // Populate data payload
-    local_vault.magic_signature = VAULT_MAGIC_NUMBER;
-    local_vault.password_length = (uint32_t)str_len;
-
-    // Safe bounded memory copy
-    memcpy(local_vault.encrypted_payload, plaintext_str, str_len);
-    // (Placeholder for AES Encryption step: encrypt local_vault.encrypted_payload here)
-
-    // Hardware Step 1: Unlock Flash Interface Configuration Registers
-    HAL_StatusTypeDef status = HAL_FLASH_Unlock();
-    if (status != HAL_OK)
-    {
-        return status;
-    }
-
-    // Hardware Step 2: Configure Sector Erase Parameters
-    FLASH_EraseInitTypeDef erase_config;
-    uint32_t sector_erase_error = 0;
-
-    erase_config.TypeErase    = FLASH_TYPEERASE_SECTORS;
-    erase_config.Sector       = VAULT_FLASH_SECTOR;
-    erase_config.NbSectors    = 1;
-    erase_config.VoltageRange = FLASH_VOLTAGE_RANGE_3; // Optimized for 2.7V - 3.6V standard VCC
-
-    // Clear Flash flags before operating
-    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
-                           FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
-
-    // Execute Sector Wipe Pump
-    status = HAL_FLASHEx_Erase(&erase_config, &sector_erase_error);
-    if (status != HAL_OK)
-    {
-        HAL_FLASH_Lock(); // Secure hardware before bailing
-        return status;
-    }
-
-    // Hardware Step 3: Aligned Word-by-Word Write Loop
-    // Calculate iterations based on exact 32-bit hardware bus width (4 bytes)
-    uint32_t total_words = sizeof(Vault_Storage_TypeDef) / 4;
-    uint32_t *source_ptr = (uint32_t *)&local_vault;
-    uint32_t target_address = VAULT_FLASH_ADDRESS;
-
-    for (uint32_t i = 0; i < total_words; i++)
-    {
-        status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, target_address, source_ptr[i]);
-        if (status != HAL_OK)
-        {
-            break; // Catch hardware failure mid-stream
-        }
-        target_address += 4; // Shift memory offset forward by exactly 1 word
-    }
-
-    // Hardware Step 4: Re-lock configuration registers to protect silicon integrity
-    HAL_FLASH_Lock();
-
-    return status;
-}
-
-/**
- * @brief Reads the raw flash data, decrypts it, and extracts the plain text.
- */
-bool Vault_Read_Credential(char* output_buffer, uint32_t max_buffer_size)
-{
-    // Defensive Check: Validate input parameters to prevent null reference or invalid space
-    if (output_buffer == NULL || max_buffer_size == 0)
-    {
-        return false;
-    }
-
-    // Check if configuration exists
-    if (!Vault_Is_Initialized())
-    {
-        return false;
-    }
-
-    // Map struct memory directly to the flash memory region
-    volatile const Vault_Storage_TypeDef *flash_vault = (volatile const Vault_Storage_TypeDef *)VAULT_FLASH_ADDRESS;
-
-    // Defensive Check: Protect against memory corruptions reading an out-of-bounds length value
-    uint32_t stored_len = flash_vault->password_length;
-    if (stored_len >= MAX_PASSWORD_LEN || (stored_len + 1) > max_buffer_size)
-    {
-        return false; // Target buffer is too small or flash data is corrupted
-    }
-
-    // Safe read execution
-    memcpy(output_buffer, (const void *)flash_vault->encrypted_payload, stored_len);
-    // (Placeholder for AES Decryption step: decrypt output_buffer here)
-
-    // Strict Memory Rule: Explicitly cap off the C string manually
-    output_buffer[stored_len] = '\0';
+    // 4. Safely offload the recovered plain text back into your main runtime ecosystem
+    memcpy(out_plaintext, cipher_buffer, AES_BLOCK_SIZE);
+    out_plaintext[AES_BLOCK_SIZE - 1] = '\0'; // Force string safety constraint
 
     return true;
 }

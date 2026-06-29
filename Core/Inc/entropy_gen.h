@@ -25,6 +25,10 @@ void Entropy_Seed_Engine(ADC_HandleTypeDef *hadc);
  * @param output_buffer Pointer to the array where the generated string will live.
  * @param length Desired number of characters for the target password.
  */
-void Entropy_Generate_Password(char* output_buffer, uint32_t length);
+// Generates a human-readable password (restricted to printable characters)
+void Entropy_Generate_Password(char *out_pass, uint32_t len);
+
+// ADD THIS: Generates pure binary bytes (0x00 - 0xFF) for cryptographic IVs/Keys
+void Entropy_Generate_Bytes(uint8_t *out_bytes, uint32_t len);
 
 #endif /* ENTROPY_GEN_H_ */
